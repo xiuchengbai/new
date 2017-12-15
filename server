@@ -1,0 +1,204 @@
+package lab1;
+
+import java.io.*;
+import java.net.*;
+/**
+ *
+ * @author Administrator
+ */
+public class Server
+{
+    public static final int DATA_SIZE=100;
+
+    /**
+     * @param args the command line arguments
+     */
+     final static String PWD = "displayDirectory";
+     static String clientpath = "D:\\server\\";
+     static String path = clientpath;
+
+
+
+    public static void main(String[] args)
+    {
+        String req;
+        DataInputStream is;
+        DataOutputStream os;
+        ServerSocket ss;
+        OutputStream outputToClient = null;
+     BufferedReader inputFromClient = null;
+        try
+        {
+            ss = new ServerSocket(3333);
+            System.out.println("connectting...");
+            Socket s = ss.accept();
+            is = new DataInputStream(s.getInputStream());
+            os = new DataOutputStream(s.getOutputStream());
+            outputToClient = new BufferedOutputStream(
+						s.getOutputStream());
+
+				inputFromClient = new BufferedReader(new InputStreamReader(
+						s.getInputStream()));
+            
+            while(true)
+            {
+               
+               req = is.readUTF();
+               System.out.println("\r\nreceive  "+req);
+               
+               if(req.equals("get\r\n"))   
+               {
+                 File fileList = new File("D:/server/");
+                 String directory = "";
+                 String[] list = fileList.list();
+                    for(int i=0;i<list.length;i++)
+                    {
+                        System.out.println(list[i]);
+                        directory=directory+"\n"+list[i];
+                    }
+                    System.out.println("d:--"+directory);
+                    os.writeUTF(directory);
+                    os.flush();
+                    System.out.println("The directory list has been sent.");
+                    //get filename
+                    String filename=is.readUTF();
+                     File f = new File("D:/server/"+filename);
+
+
+                     if (null == f || !f.exists()) {
+                         os.writeUTF("404,file not exit");
+                        os.flush();
+                    	} else {
+                         long size = f.length();
+	                      System.out.println(size);
+						InputStream fileStream = new FileInputStream(f);
+						// if  transfer successlly 锛宑lose the socket
+						if (sendFile(fileStream, outputToClient, size)) {
+							if (fileStream != null) {
+								fileStream.close();
+							}
+							if (outputToClient != null) {
+								outputToClient.close();
+							}
+							if (inputFromClient != null) {
+								inputFromClient.close();
+							}
+                                                        if (s != null) {
+								s.close();
+							}
+							
+							break;
+						}
+						
+					}
+
+                    
+                     if(position(filename).isFile()){
+
+                    FileInputStream fis = new FileInputStream( position(filename) );
+                    //send content
+                               
+                    //System.out.println("The file has been sent ("+sum+" bytes)");
+                    fis.close();                    
+                }
+               }
+               if(req.equals("list\r\n"))
+               {
+                 File fileList = new File("D:/server/");
+                 String directory = "";
+                 String[] list = fileList.list();
+                    for(int i=0;i<list.length;i++)
+                    {
+                        System.out.println(list[i]);
+                        directory=directory+"\n"+list[i];
+                    }
+                    System.out.println("d:--"+directory);
+                    os.writeUTF(directory);
+                    os.flush();
+                    System.out.println("The directory list has been sent.");
+                    //get filename
+                    
+               }
+                if(req.equals(  "upload\r\n"   ))      
+                {
+                    //Step 1: get the filename
+                    String filename = is.readUTF();
+                    System.out.println(filename);
+                    //Step 2: get the content of the file
+                    File f = new File("D:/server/"+filename);
+
+                    if (f.exists()){
+                        f.delete();//if the file exists, delete it.
+                    }
+                    FileOutputStream fos = new FileOutputStream( f );
+                    int data,sum=0;
+                      //while ( -1 != ( data = is.read( ) ) )
+                      while(is.available() != 0)
+                      {
+                        data=is.read();
+                        fos.write( data );
+                        sum+=1;
+                      }
+                    System.out.println("The file's end!");
+                    System.out.println(sum+" bytes are retrieved.");
+                    fos.flush();
+                    fos.close();
+                    //Step 3: give the feedback
+                    System.out.println("The file "+filename+" has been successufully uploaded!");
+                    
+                }
+                if (req.equals("displayDirectory\r\n")) {
+			System.out.println("Current local path: " + path);
+
+                         os.writeUTF(path);
+                          os.flush();
+		}
+                if(req.equals("exit"))
+                {
+                    System.out.println("server exit the system");
+                    os.close();
+                    is.close();
+                    ss.close();
+                    break;
+                }
+            }
+        }catch(IOException e){
+            System.out.println("EXCEPTION"+e.toString() );
+        }
+    }
+    private static File position( String f )
+    {
+      String postion="D:/server/";
+      File file = new File(postion+f);
+      return file;
+    }
+    private static boolean sendFile(InputStream file, OutputStream out,long size) {
+		try {
+			// FIXME
+			byte[] buffer = new byte[1024];
+
+			int bytesNum = 0;
+			long count = 0;
+			String sizeStr = size + ":";
+
+
+			out.write(sizeStr.getBytes());
+			while ((bytesNum = file.read(buffer)) != -1) {
+
+				count += bytesNum;
+
+				out.write(buffer, 0, bytesNum);
+				out.flush();
+				if (count == size) {
+					System.out.println("File Transmission Successlly");
+					return true;
+				}
+			}
+			System.out.println(count);
+		} catch (IOException e) {
+			return false;
+		}
+		return false;
+	}
+}
+
